@@ -20,15 +20,12 @@ package org.apache.rocketmq.spring.core;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.rocketmq.client.exception.MQClientException;
-import org.apache.rocketmq.client.producer.DefaultMQProducer;
-import org.apache.rocketmq.client.producer.MessageQueueSelector;
-import org.apache.rocketmq.client.producer.SendCallback;
-import org.apache.rocketmq.client.producer.SendResult;
-import org.apache.rocketmq.client.producer.TransactionMQProducer;
-import org.apache.rocketmq.client.producer.TransactionSendResult;
+import org.apache.rocketmq.client.producer.*;
 import org.apache.rocketmq.client.producer.selector.SelectMessageQueueByHash;
 import org.apache.rocketmq.spring.config.RocketMQConfigUtils;
 import org.apache.rocketmq.spring.support.RocketMQUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.messaging.Message;
@@ -39,25 +36,36 @@ import org.springframework.messaging.core.MessagePostProcessor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.MimeTypeUtils;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> implements InitializingBean, DisposableBean {
+
     private static final  Logger log = LoggerFactory.getLogger(RocketMQTemplate.class);
 
+    /**
+     * 消息生产者
+     */
     private DefaultMQProducer producer;
 
     private ObjectMapper objectMapper;
 
     private String charset = "UTF-8";
 
+    /**
+     * 消息队列选择器
+     */
     private MessageQueueSelector messageQueueSelector = new SelectMessageQueueByHash();
 
+    /**
+     * TransactionMQProducer 的映射
+     *
+     * KEY：{@link TransactionMQProducer#getProducerGroup()} 事务生产者对应的分组
+     */
     private final Map<String, TransactionMQProducer> cache = new ConcurrentHashMap<>(); //only put TransactionMQProducer by now!!!
 
     public DefaultMQProducer getProducer() {
@@ -132,6 +140,7 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
      * @return {@link SendResult}
      */
     public SendResult syncSend(String destination, Message<?> message, long timeout, int delayLevel) {
+        // 校验消息
         if (Objects.isNull(message) || Objects.isNull(message.getPayload())) {
             log.error("syncSend failed. destination:{}, message is null ", destination);
             throw new IllegalArgumentException("`message` and `message.payload` cannot be null");
@@ -139,12 +148,15 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
 
         try {
             long now = System.currentTimeMillis();
-            org.apache.rocketmq.common.message.Message rocketMsg = RocketMQUtil.convertToRocketMessage(objectMapper,
-                charset, destination, message);
+            // 将 message 转换成 RocketMQ Message 对象
+            org.apache.rocketmq.common.message.Message rocketMsg = RocketMQUtil.convertToRocketMessage(objectMapper, charset, destination, message);
+            // 设置 delayLevel 属性
             if (delayLevel > 0) {
                 rocketMsg.setDelayTimeLevel(delayLevel);
             }
+            // 同步发送消息
             SendResult sendResult = producer.send(rocketMsg, timeout);
+            // 打印日志
             long costTime = System.currentTimeMillis() - now;
             log.debug("send message cost: {} ms, msgId:{}", costTime, sendResult.getMsgId());
             return sendResult;
@@ -459,8 +471,6 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
         log.debug("send message to `{}` finished. result:{}", destination, sendResult);
     }
 
-
-
     @Override
     protected Message<?> doConvert(Object payload, Map<String, Object> headers, MessagePostProcessor postProcessor) {
         String content;
@@ -489,12 +499,14 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
         return message;
     }
 
-    @Override
+    @Override // 实现自 DisposableBean 接口
     public void destroy() {
+        // 关闭 producer
         if (Objects.nonNull(producer)) {
             producer.shutdown();
         }
 
+        // 关闭 cache
         for (Map.Entry<String, TransactionMQProducer> kv : cache.entrySet()) {
             if (Objects.nonNull(kv.getValue())) {
                 kv.getValue().shutdown();
@@ -510,10 +522,10 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
     private TransactionMQProducer stageMQProducer(String name) throws MessagingException {
         name = getTxProducerGroupName(name);
 
+        // 获得 TransactionMQProducer 对象
         TransactionMQProducer cachedProducer = cache.get(name);
         if (cachedProducer == null) {
-            throw new MessagingException(
-                String.format("Can not found MQProducer '%s' in cache! please define @RocketMQLocalTransactionListener class or invoke createOrGetStartedTransactionMQProducer() to create it firstly", name));
+            throw new MessagingException(String.format("Can not found MQProducer '%s' in cache! please define @RocketMQLocalTransactionListener class or invoke createOrGetStartedTransactionMQProducer() to create it firstly", name));
         }
 
         return cachedProducer;
@@ -531,9 +543,11 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
      */
     public TransactionSendResult sendMessageInTransaction(final String txProducerGroup, final String destination, final Message<?> message, final Object arg) throws MessagingException {
         try {
+            // 获得 TransactionMQProducer 对象
             TransactionMQProducer txProducer = this.stageMQProducer(txProducerGroup);
-            org.apache.rocketmq.common.message.Message rocketMsg = RocketMQUtil.convertToRocketMessage(objectMapper,
-                charset, destination, message);
+            // 将 message 转换成 RocketMQ Message 对象
+            org.apache.rocketmq.common.message.Message rocketMsg = RocketMQUtil.convertToRocketMessage(objectMapper, charset, destination, message);
+            // 发送事务消息
             return txProducer.sendMessageInTransaction(rocketMsg, arg);
         } catch (MQClientException e) {
             throw RocketMQUtil.convert(e);
@@ -568,17 +582,20 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
      * @return true if producer is created and started; false if the named producer already exists in cache.
      * @throws MessagingException
      */
-    public boolean createAndStartTransactionMQProducer(String txProducerGroup, RocketMQLocalTransactionListener transactionListener,
-                                                       ExecutorService executorService) throws MessagingException {
+    public boolean createAndStartTransactionMQProducer(String txProducerGroup, RocketMQLocalTransactionListener transactionListener,  ExecutorService executorService) throws MessagingException {
+        // 如果已经存在，则直接返回
         txProducerGroup = getTxProducerGroupName(txProducerGroup);
         if (cache.containsKey(txProducerGroup)) {
             log.info(String.format("get TransactionMQProducer '%s' from cache", txProducerGroup));
             return false;
         }
 
+        // 创建 TransactionMQProducer 对象
         TransactionMQProducer txProducer = createTransactionMQProducer(txProducerGroup, transactionListener, executorService);
         try {
+            // 启动 TransactionMQProducer 对象
             txProducer.start();
+            // 添加到 cache 中
             cache.put(txProducerGroup, txProducer);
         } catch (MQClientException e) {
             throw RocketMQUtil.convert(e);
@@ -587,13 +604,15 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
         return true;
     }
 
-    private TransactionMQProducer createTransactionMQProducer(String name, RocketMQLocalTransactionListener transactionListener,
-                                                              ExecutorService executorService) {
+    private TransactionMQProducer createTransactionMQProducer(String name, RocketMQLocalTransactionListener transactionListener, ExecutorService executorService) {
         Assert.notNull(producer, "Property 'producer' is required");
         Assert.notNull(transactionListener, "Parameter 'transactionListener' is required");
+        // 创建 TransactionMQProducer 对象
         TransactionMQProducer txProducer = new TransactionMQProducer(name);
+        // 转换监听器，并设置到 txProducer 中
         txProducer.setTransactionListener(RocketMQUtil.convert(transactionListener));
 
+        // 设置其它属性
         txProducer.setNamesrvAddr(producer.getNamesrvAddr());
         if (executorService != null) {
             txProducer.setExecutorService(executorService);
@@ -608,4 +627,5 @@ public class RocketMQTemplate extends AbstractMessageSendingTemplate<String> imp
 
         return txProducer;
     }
+
 }

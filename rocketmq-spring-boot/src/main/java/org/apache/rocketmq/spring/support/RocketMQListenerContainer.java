@@ -27,4 +27,5 @@ public interface RocketMQListenerContainer extends DisposableBean {
      * not supported.
      */
     void setupMessageListener(RocketMQListener<?> messageListener);
+
 }

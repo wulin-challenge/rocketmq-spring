@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnMissingBean(ObjectMapper.class)
+@ConditionalOnMissingBean(ObjectMapper.class) // 不存在 ObjectMapper Bean 时
 class JacksonFallbackConfiguration {
 
     @Bean

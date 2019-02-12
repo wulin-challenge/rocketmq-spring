@@ -19,7 +19,22 @@ package org.apache.rocketmq.spring.core;
 import org.springframework.messaging.Message;
 
 public interface RocketMQLocalTransactionListener {
+
+    /**
+     * 执行本地事务
+     *
+     * @param msg 消息
+     * @param arg 方法参数
+     * @return 本地事务状态
+     */
     RocketMQLocalTransactionState executeLocalTransaction(final Message msg, final Object arg);
 
+    /**
+     * 检查本地事务状态
+     *
+     * @param msg 消息
+     * @return 本地事务状态
+     */
     RocketMQLocalTransactionState checkLocalTransaction(final Message msg);
+
 }

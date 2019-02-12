@@ -18,5 +18,14 @@
 package org.apache.rocketmq.spring.support;
 
 public interface RocketMQConsumerLifecycleListener<T> {
+
+    /**
+     * Consumer 准备启动的回调。
+     *
+     * 通过实现该方法，可以对 Consumer 做一些其他方法的调用。
+     *
+     * @param consumer 消费者
+     */
     void prepareStart(final T consumer);
+
 }

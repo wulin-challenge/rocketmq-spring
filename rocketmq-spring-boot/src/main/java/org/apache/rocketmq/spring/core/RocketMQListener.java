@@ -17,6 +17,13 @@
 
 package org.apache.rocketmq.spring.core;
 
-public interface RocketMQListener<T> {
+public interface RocketMQListener<T> { // <T> 泛型，声明消费的消息类型
+
+    /**
+     * 消费消息
+     *
+     * @param message 消息
+     */
     void onMessage(T message);
+
 }

@@ -25,8 +25,12 @@ import org.springframework.beans.factory.DisposableBean;
 import java.util.Set;
 
 public class TransactionHandlerRegistry implements DisposableBean {
-    private RocketMQTemplate rocketMQTemplate;
 
+
+    private RocketMQTemplate rocketMQTemplate;
+    /**
+     * {@link TransactionHandler#name} 的 集合
+     */
     private final Set<String> listenerContainers = new ConcurrentSet<>();
 
     public TransactionHandlerRegistry(RocketMQTemplate template) {
@@ -39,14 +43,16 @@ public class TransactionHandlerRegistry implements DisposableBean {
     }
 
     public void registerTransactionHandler(TransactionHandler handler) throws MQClientException {
+        // 不能声明重复的 TransactionHandler
         if (listenerContainers.contains(handler.getName())) {
             throw new MQClientException(-1,
-                String
-                    .format("The transaction name [%s] has been defined in TransactionListener [%s]", handler.getName(),
-                        handler.getBeanName()));
+                String.format("The transaction name [%s] has been defined in TransactionListener [%s]", handler.getName(), handler.getBeanName()));
         }
+        // 添加到 listenerContainers 中
         listenerContainers.add(handler.getName());
 
+        // 创建并启动 TransactionMQProducer
         rocketMQTemplate.createAndStartTransactionMQProducer(handler.getName(), handler.getListener(), handler.getCheckExecutor());
     }
+
 }

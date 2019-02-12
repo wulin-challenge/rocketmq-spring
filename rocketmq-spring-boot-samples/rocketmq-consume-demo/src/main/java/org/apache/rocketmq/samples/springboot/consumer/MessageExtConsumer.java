@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RocketMQMessageListener(topic = "message-ext-topic", selectorExpression = "tag1", consumerGroup = "${spring.application.name}-message-ext-consumer")
 public class MessageExtConsumer implements RocketMQListener<MessageExt>, RocketMQPushConsumerLifecycleListener {
+
     @Override
     public void onMessage(MessageExt message) {
         System.out.printf("------- MessageExtConsumer received message, msgId: %s, body:%s \n", message.getMsgId(), new String(message.getBody()));
@@ -43,4 +44,5 @@ public class MessageExtConsumer implements RocketMQListener<MessageExt>, RocketM
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_TIMESTAMP);
         consumer.setConsumeTimestamp(UtilAll.timeMillisToHumanString3(System.currentTimeMillis()));
     }
+
 }

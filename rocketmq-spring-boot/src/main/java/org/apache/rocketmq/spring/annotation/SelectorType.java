@@ -19,15 +19,23 @@ package org.apache.rocketmq.spring.annotation;
 
 import org.apache.rocketmq.common.filter.ExpressionType;
 
+/**
+ * 选择消息的方式
+ */
 public enum SelectorType {
 
     /**
      * @see ExpressionType#TAG
+     *
+     * 标签
      */
     TAG,
 
     /**
      * @see ExpressionType#SQL92
+     *
+     * SQL
      */
     SQL92
+
 }

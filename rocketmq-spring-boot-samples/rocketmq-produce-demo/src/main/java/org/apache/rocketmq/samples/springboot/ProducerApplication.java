@@ -113,9 +113,14 @@ public class ProducerApplication implements CommandLineRunner {
 
     @RocketMQTransactionListener(txProducerGroup = TX_PGROUP_NAME)
     class TransactionListenerImpl implements RocketMQLocalTransactionListener {
+
         private AtomicInteger transactionIndex = new AtomicInteger(0);
 
         private ConcurrentHashMap<String, Integer> localTrans = new ConcurrentHashMap<String, Integer>();
+
+        public TransactionListenerImpl() {
+            System.out.println("");
+        }
 
         @Override
         public RocketMQLocalTransactionState executeLocalTransaction(Message msg, Object arg) {

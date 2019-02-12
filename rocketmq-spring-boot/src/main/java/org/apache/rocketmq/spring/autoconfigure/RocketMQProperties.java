@@ -20,14 +20,19 @@ package org.apache.rocketmq.spring.autoconfigure;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @SuppressWarnings("WeakerAccess")
-@ConfigurationProperties(prefix = "rocketmq")
+@ConfigurationProperties(prefix = "rocketmq") // 配置文件中 rocketmq 前缀
 public class RocketMQProperties {
 
     /**
      * The name server for rocketMQ, formats: `host:port;host:port`.
+     *
+     * Namesrv 地址
      */
     private String nameServer;
 
+    /**
+     * Producer 配置
+     */
     private Producer producer;
 
     public String getNameServer() {
@@ -141,4 +146,5 @@ public class RocketMQProperties {
             this.maxMessageSize = maxMessageSize;
         }
     }
+
 }

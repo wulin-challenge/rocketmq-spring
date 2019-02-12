@@ -33,13 +33,15 @@ import java.lang.annotation.Target;
  * <p>Note: The annotation is used only on RocketMQ client producer side, it can not be used
  * on consumer side.
  */
-@Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
+@Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})  // 表名，注解在类上
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Component
+@Component // 默认带了 @Component 注解，所以只要添加到了类上，就会注册成 Spring Bean 对象
 public @interface RocketMQTransactionListener {
 
     /**
+     * 生产者分组
+     *
      * Declare the txProducerGroup that is used to relate callback event to the listener, rocketMQTemplate must send a
      * transactional message with the declared txProducerGroup.
      * <p>
@@ -66,4 +68,5 @@ public @interface RocketMQTransactionListener {
      * Set ExecutorService params -- blockingQueueSize
      */
     int blockingQueueSize() default 2000;
+
 }

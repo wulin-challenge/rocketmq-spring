@@ -20,6 +20,7 @@ package org.apache.rocketmq.spring.support;
  * Represents the RocketMQ message protocol that is used during the data exchange.
  */
 public class RocketMQHeaders {
+
     public static final String KEYS = "KEYS";
     public static final String TAGS = "TAGS";
     public static final String TOPIC = "TOPIC";
@@ -31,4 +32,5 @@ public class RocketMQHeaders {
     public static final String SYS_FLAG = "SYS_FLAG";
     public static final String TRANSACTION_ID = "TRANSACTION_ID";
     public static final String PROPERTIES = "PROPERTIES";
+
 }
